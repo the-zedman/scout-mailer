@@ -1,0 +1,9 @@
+{
+  "name": "scout-mailer",
+  "private": true,
+  "description": "Scout Mailer – plain HTML/CSS/JS, mobile-first",
+  "dependencies": {
+    "@vercel/blob": "^0.25.0",
+    "bcryptjs": "^2.4.3"
+  }
+}

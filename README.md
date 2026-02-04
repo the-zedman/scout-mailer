@@ -4,11 +4,12 @@ Plain HTML, CSS, and JavaScript site. Mobile-first, then desktop. Styled with Ta
 
 ## Local setup
 
-- No build step. Open `index.html` in a browser or use a static server:
+- **Static only:** `npx serve .` then open the URL (login/register will 404; no API).
+- **With API + auth:** Use Vercel for the API and Blob storage:
   ```bash
-  npx serve .
+  npm install && vercel dev
   ```
-- Then open http://localhost:3000 (or the URL shown).
+  Then open the URL Vercel gives you. Add a [Blob store](https://vercel.com/docs/storage/vercel-blob) to the project and run `vercel env pull` so `BLOB_READ_WRITE_TOKEN` is set locally.
 
 ## GitHub + deploy
 
@@ -35,6 +36,12 @@ git push -u origin main
 3. Leave defaults (root directory, no build command) → **Deploy**.
 
 After that, every `git push` to `main` triggers a new deployment.
+
+### Auth and users
+
+- **Login** (header) opens a modal: sign in with email + password, or use **Create new account** (first name, last name, email, password). New users get role **Author**; roles are **Admin**, **Manager**, **Author**.
+- Users are stored in a CSV in [Vercel Blob](https://vercel.com/docs/storage/vercel-blob); passwords are hashed with bcrypt. Add a Blob store to the project so the API can read/write the CSV.
+- **Initial admin:** James Robinson, `james.robinson@nsw.scouts.com.au`, password `Swat99Ch`, role **Admin** (see `data/users.seed.csv`). On first use the API bootstraps from this seed into Blob.
 
 ## Test that it works
 

@@ -1,0 +1,2 @@
+FirstName,LastName,Email,PasswordHash,Role
+James,Robinson,james.robinson@nsw.scouts.com.au,$2a$10$Q/xlMOED/YOyITIrn8RzgOfHeM36GkD/GaavUscOi0nROterTatD2,Admin

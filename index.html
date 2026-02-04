@@ -21,6 +21,10 @@
         <nav class="flex items-center gap-4 sm:gap-6">
           <a href="#features" class="text-sm text-slate-600 hover:text-brand sm:text-base">Features</a>
           <a href="#about" class="text-sm text-slate-600 hover:text-brand sm:text-base">About</a>
+          <button type="button" id="auth-trigger" class="text-sm font-medium text-brand hover:text-brand-light sm:text-base">
+            Login
+          </button>
+          <span id="auth-user" class="hidden text-sm text-slate-600 sm:text-base"></span>
         </nav>
       </div>
     </div>
@@ -82,6 +86,64 @@
       <p class="text-center text-sm text-slate-600">Scout Mailer · Push to main = deploy to prod</p>
     </div>
   </footer>
+
+  <!-- Login / Create account modal (mobile-first) -->
+  <div id="auth-modal" class="fixed inset-0 z-20 hidden overflow-y-auto" aria-hidden="true">
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" aria-hidden="true"></div>
+    <div class="flex min-h-full items-center justify-center p-4 sm:p-6">
+      <div class="relative w-full max-w-md rounded-xl bg-white shadow-xl sm:max-w-lg">
+        <button type="button" id="auth-modal-close" class="absolute right-3 top-3 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 sm:right-4 sm:top-4" aria-label="Close">
+          <svg class="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+
+        <div class="p-4 sm:p-6">
+          <h2 id="auth-modal-title" class="text-xl font-semibold text-slate-900 sm:text-2xl">Log in</h2>
+
+          <!-- Login form -->
+          <form id="auth-login-form" class="mt-4 space-y-4">
+            <div>
+              <label for="login-email" class="block text-sm font-medium text-slate-700">Email</label>
+              <input type="email" id="login-email" name="email" required autocomplete="email" class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand sm:text-sm" placeholder="you@example.com" />
+            </div>
+            <div>
+              <label for="login-password" class="block text-sm font-medium text-slate-700">Password</label>
+              <input type="password" id="login-password" name="password" required autocomplete="current-password" class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand sm:text-sm" />
+            </div>
+            <p id="auth-login-error" class="hidden text-sm text-red-600"></p>
+            <button type="submit" class="w-full rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-light sm:py-3 sm:text-base">Log in</button>
+          </form>
+
+          <!-- Create account form (initially hidden) -->
+          <form id="auth-register-form" class="mt-4 hidden space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label for="register-first" class="block text-sm font-medium text-slate-700">First name</label>
+                <input type="text" id="register-first" name="firstName" required autocomplete="given-name" class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand sm:text-sm" />
+              </div>
+              <div>
+                <label for="register-last" class="block text-sm font-medium text-slate-700">Last name</label>
+                <input type="text" id="register-last" name="lastName" required autocomplete="family-name" class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand sm:text-sm" />
+              </div>
+            </div>
+            <div>
+              <label for="register-email" class="block text-sm font-medium text-slate-700">Email</label>
+              <input type="email" id="register-email" name="email" required autocomplete="email" class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand sm:text-sm" placeholder="you@example.com" />
+            </div>
+            <div>
+              <label for="register-password" class="block text-sm font-medium text-slate-700">Password</label>
+              <input type="password" id="register-password" name="password" required autocomplete="new-password" class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand sm:text-sm" />
+            </div>
+            <p id="auth-register-error" class="hidden text-sm text-red-600"></p>
+            <button type="submit" class="w-full rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-light sm:py-3 sm:text-base">Create account</button>
+          </form>
+
+          <p class="mt-4 text-center text-sm text-slate-600">
+            <button type="button" id="auth-toggle-mode" class="font-medium text-brand hover:text-brand-light">Create new account</button>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script src="js/main.js"></script>
 </body>
