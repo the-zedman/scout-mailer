@@ -32,6 +32,8 @@
   var modalTitle = document.getElementById('auth-modal-title');
   var toggleModeBtn = document.getElementById('auth-toggle-mode');
   var authUserEl = document.getElementById('auth-user');
+  var authLoggedInBlock = document.getElementById('auth-logged-in');
+  var logoutBtn = document.getElementById('auth-logout');
 
   function openModal(showRegister) {
     if (!modal) return;
@@ -58,12 +60,13 @@
 
   if (trigger) trigger.addEventListener('click', function () {
     var user = getSessionUser();
-    if (user) {
-      clearSession();
-      updateAuthUI();
-      return;
-    }
+    if (user) return;
     openModal(false);
+  });
+
+  if (logoutBtn) logoutBtn.addEventListener('click', function () {
+    clearSession();
+    updateAuthUI();
   });
 
   if (closeBtn) closeBtn.addEventListener('click', closeModal);
@@ -99,11 +102,12 @@
     var user = getSessionUser();
     if (!authUserEl || !trigger) return;
     if (user) {
-      authUserEl.textContent = 'Logged in as ' + (user.firstName || user.email) + ' (' + (user.role || 'Author') + ')';
-      authUserEl.classList.remove('hidden');
-      trigger.textContent = 'Log out';
+      authUserEl.textContent = (user.firstName || user.email) + ' (' + (user.role || 'Author') + ')';
+      if (authLoggedInBlock) authLoggedInBlock.classList.remove('hidden');
+      trigger.classList.add('hidden');
     } else {
-      authUserEl.classList.add('hidden');
+      if (authLoggedInBlock) authLoggedInBlock.classList.add('hidden');
+      trigger.classList.remove('hidden');
       trigger.textContent = 'Login';
     }
   }
