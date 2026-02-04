@@ -1,77 +1,57 @@
 const crypto = require('crypto');
-const { list, put, del } = require('@vercel/blob');
 
-const TOKENS_BLOB_PATH = 'session-tokens.json';
-const TOKEN_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24h
+const SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24h
+const SESSION_SECRET = process.env.SESSION_SECRET || 'dev-secret-change-in-production';
 
-function createToken() {
-  return crypto.randomBytes(16).toString('hex');
+function sign(value) {
+  return crypto.createHmac('sha256', SESSION_SECRET).update(value).digest('base64url');
 }
 
-async function getTokensJson() {
-  try {
-    const { blobs } = await list({ prefix: TOKENS_BLOB_PATH });
-    const blob = blobs.find((b) => b.pathname === TOKENS_BLOB_PATH);
-    if (blob?.url) {
-      const res = await fetch(blob.url);
-      if (res.ok) {
-        const text = await res.text();
-        return text ? JSON.parse(text) : {};
-      }
-    }
-  } catch (_) {}
-  return {};
-}
-
-async function setTokensJson(data) {
-  await put(TOKENS_BLOB_PATH, JSON.stringify(data), {
-    contentType: 'application/json',
-  });
-}
-
-async function addToken(token, email, role) {
-  const data = await getTokensJson();
-  data[token] = {
-    email,
-    role,
-    exp: Date.now() + TOKEN_MAX_AGE_MS,
+function createSessionCookie(email, role) {
+  const payload = {
+    email: email.trim().toLowerCase(),
+    role: role || 'Author',
+    exp: Date.now() + SESSION_MAX_AGE_MS,
   };
-  await setTokensJson(data);
+  const value = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+  const sig = sign(value);
+  return value + '.' + sig;
 }
 
-async function getTokenData(token) {
-  if (!token) return null;
-  const data = await getTokensJson();
-  const entry = data[token];
-  if (!entry || entry.exp < Date.now()) {
-    if (entry) delete data[token]; await setTokensJson(data);
+function getSession(req) {
+  const cookie = req.headers?.cookie || req.headers?.Cookie || '';
+  const match = cookie.match(/\bsession=([^;\s]+)/);
+  const raw = match ? match[1].trim() : null;
+  if (!raw) return null;
+  const dot = raw.lastIndexOf('.');
+  if (dot === -1) return null;
+  const value = raw.slice(0, dot);
+  const sig = raw.slice(dot + 1);
+  if (sign(value) !== sig) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(value, 'base64url').toString('utf8'));
+    if (payload.exp && payload.exp < Date.now()) return null;
+    return { email: payload.email, role: payload.role };
+  } catch (_) {
     return null;
   }
-  return { email: entry.email, role: entry.role };
 }
 
-async function deleteToken(token) {
-  const data = await getTokensJson();
-  delete data[token];
-  await setTokensJson(data);
+function clearSessionCookie(res) {
+  res.setHeader('Set-Cookie', [
+    'session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0',
+  ]);
 }
 
-function getTokenFromCookie(req) {
-  const cookie = req.headers?.cookie || '';
-  const match = cookie.match(/\bsession=([^;\s]+)/);
-  return match ? match[1].trim() : null;
-}
-
-async function getSession(req) {
-  const token = getTokenFromCookie(req);
-  return token ? getTokenData(token) : null;
+function setSessionCookie(res, email, role) {
+  const cookie = createSessionCookie(email, role);
+  res.setHeader('Set-Cookie', [
+    'session=' + cookie + '; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400',
+  ]);
 }
 
 module.exports = {
-  createToken,
-  addToken,
-  getTokenData,
-  deleteToken,
-  getTokenFromCookie,
   getSession,
+  setSessionCookie,
+  clearSessionCookie,
 };

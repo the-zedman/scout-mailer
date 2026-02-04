@@ -1,4 +1,4 @@
-const { getTokenFromCookie, deleteToken } = require('./_lib/tokens.js');
+const { clearSessionCookie } = require('./_lib/tokens.js');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -7,11 +7,7 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const token = getTokenFromCookie(req);
-    if (token) await deleteToken(token);
-    res.setHeader('Set-Cookie', [
-      'session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0',
-    ]);
+    clearSessionCookie(res);
     return res.status(200).json({ success: true });
   } catch (e) {
     console.error('Logout error:', e);

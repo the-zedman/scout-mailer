@@ -4,15 +4,9 @@ const {
   parseCsv,
   findUserByEmail,
 } = require('./_lib/users-csv.js');
-const { createToken, addToken } = require('./_lib/tokens.js');
+const { setSessionCookie } = require('./_lib/tokens.js');
 
 const ROLES = ['Admin', 'Manager', 'Author'];
-
-function setSessionCookie(res, token) {
-  res.setHeader('Set-Cookie', [
-    'session=' + token + '; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400',
-  ]);
-}
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -41,9 +35,7 @@ module.exports = async function handler(req, res) {
     }
 
     const roleVal = ROLES.includes(role) ? role : 'Author';
-    const token = createToken();
-    await addToken(token, email.trim().toLowerCase(), roleVal);
-    setSessionCookie(res, token);
+    setSessionCookie(res, email.trim().toLowerCase(), roleVal);
 
     const [firstName, lastName] = user.row;
     return res.status(200).json({
