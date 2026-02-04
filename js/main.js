@@ -33,6 +33,7 @@
   var toggleModeBtn = document.getElementById('auth-toggle-mode');
   var authUserEl = document.getElementById('auth-user');
   var authLoggedInBlock = document.getElementById('auth-logged-in');
+  var authAdminLink = document.getElementById('auth-admin-link');
   var logoutBtn = document.getElementById('auth-logout');
 
   function openModal(showRegister) {
@@ -65,6 +66,7 @@
   });
 
   if (logoutBtn) logoutBtn.addEventListener('click', function () {
+    fetch('/api/logout', { method: 'POST', credentials: 'include' }).catch(function () {});
     clearSession();
     updateAuthUI();
   });
@@ -105,8 +107,10 @@
       authUserEl.textContent = (user.firstName || user.email) + ' (' + (user.role || 'Author') + ')';
       if (authLoggedInBlock) authLoggedInBlock.classList.remove('hidden');
       trigger.classList.add('hidden');
+      if (authAdminLink) authAdminLink.classList.toggle('hidden', user.role !== 'Admin');
     } else {
       if (authLoggedInBlock) authLoggedInBlock.classList.add('hidden');
+      if (authAdminLink) authAdminLink.classList.add('hidden');
       trigger.classList.remove('hidden');
       trigger.textContent = 'Login';
     }
@@ -115,6 +119,7 @@
   function apiPost(path, body) {
     return fetch(path, {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     }).then(function (res) {

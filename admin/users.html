@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Users – Admin – Scout Mailer</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style type="text/tailwindcss">
+    @theme {
+      --color-brand: #2563eb;
+      --color-brand-light: #3b82f6;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-900 antialiased">
+  <header class="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur">
+    <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+      <div class="flex h-14 items-center justify-between sm:h-16">
+        <a href="/" class="text-lg font-semibold text-slate-900 sm:text-xl">Scout Mailer</a>
+        <nav class="flex items-center gap-4 sm:gap-6">
+          <a href="/" class="text-sm text-slate-600 hover:text-brand sm:text-base">Home</a>
+          <a href="index.html" class="text-sm text-slate-600 hover:text-brand sm:text-base">Admin</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main class="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h1 class="text-2xl font-bold text-slate-900 sm:text-3xl">Users</h1>
+        <p class="mt-1 text-slate-600 sm:text-base">View, edit, and delete user accounts.</p>
+      </div>
+      <a href="index.html" class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 sm:px-5 sm:py-2.5">Back to Admin</a>
+    </div>
+
+    <div id="users-error" class="mt-4 hidden rounded-lg bg-red-50 p-4 text-sm text-red-700"></div>
+    <div id="users-loading" class="mt-6 text-slate-600">Loading users…</div>
+    <div id="users-table-wrap" class="mt-6 hidden overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+      <table class="min-w-full divide-y divide-slate-200 text-left text-sm sm:text-base">
+        <thead class="bg-slate-50">
+          <tr>
+            <th scope="col" class="px-4 py-3 font-semibold text-slate-900 sm:px-6">First name</th>
+            <th scope="col" class="px-4 py-3 font-semibold text-slate-900 sm:px-6">Last name</th>
+            <th scope="col" class="px-4 py-3 font-semibold text-slate-900 sm:px-6">Email</th>
+            <th scope="col" class="px-4 py-3 font-semibold text-slate-900 sm:px-6">Role</th>
+            <th scope="col" class="relative px-4 py-3 sm:px-6"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody id="users-tbody" class="divide-y divide-slate-200"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- Edit user modal -->
+  <div id="edit-modal" class="fixed inset-0 z-20 hidden overflow-y-auto" aria-hidden="true">
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
+    <div class="flex min-h-full items-center justify-center p-4 sm:p-6">
+      <div class="relative w-full max-w-md rounded-xl bg-white shadow-xl sm:max-w-lg">
+        <button type="button" id="edit-modal-close" class="absolute right-3 top-3 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 sm:right-4 sm:top-4" aria-label="Close">×</button>
+        <div class="p-4 sm:p-6">
+          <h2 class="text-xl font-semibold text-slate-900 sm:text-2xl">Edit user</h2>
+          <form id="edit-form" class="mt-4 space-y-4">
+            <input type="hidden" id="edit-target-email" name="targetEmail" />
+            <div>
+              <label for="edit-first" class="block text-sm font-medium text-slate-700">First name</label>
+              <input type="text" id="edit-first" name="firstName" required class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand sm:text-sm" />
+            </div>
+            <div>
+              <label for="edit-last" class="block text-sm font-medium text-slate-700">Last name</label>
+              <input type="text" id="edit-last" name="lastName" required class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand sm:text-sm" />
+            </div>
+            <div>
+              <label for="edit-email" class="block text-sm font-medium text-slate-700">Email</label>
+              <input type="email" id="edit-email" name="email" required class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand sm:text-sm" />
+            </div>
+            <div>
+              <label for="edit-role" class="block text-sm font-medium text-slate-700">Role</label>
+              <select id="edit-role" name="role" class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand sm:text-sm">
+                <option value="Author">Author</option>
+                <option value="Manager">Manager</option>
+                <option value="Admin">Admin</option>
+              </select>
+            </div>
+            <p id="edit-error" class="hidden text-sm text-red-600"></p>
+            <button type="submit" class="w-full rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-light sm:py-3 sm:text-base">Save</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="users.js"></script>
+</body>
+</html>

@@ -75,6 +75,34 @@ function appendUser(rows, firstName, lastName, email, passwordHash, role = 'Auth
   return serializeCsv(newRows);
 }
 
+/**
+ * Update a user row by target email. Updates firstName, lastName, email, role; keeps password hash.
+ */
+function updateUserRow(rows, targetEmail, updates) {
+  const normalized = targetEmail.trim().toLowerCase();
+  const out = rows.map((row, i) => {
+    if (i === 0) return row;
+    if (row[2]?.toLowerCase() !== normalized) return row;
+    return [
+      updates.firstName !== undefined ? updates.firstName : row[0],
+      updates.lastName !== undefined ? updates.lastName : row[1],
+      updates.email !== undefined ? updates.email.trim() : row[2],
+      row[3],
+      updates.role !== undefined ? updates.role : row[4],
+    ];
+  });
+  return serializeCsv(out);
+}
+
+/**
+ * Remove a user row by email. Returns new CSV string.
+ */
+function deleteUserRow(rows, targetEmail) {
+  const normalized = targetEmail.trim().toLowerCase();
+  const out = rows.filter((row, i) => i === 0 || row[2]?.toLowerCase() !== normalized);
+  return serializeCsv(out);
+}
+
 module.exports = {
   CSV_HEADER,
   parseCsv,
@@ -83,4 +111,6 @@ module.exports = {
   setUsersCsv,
   findUserByEmail,
   appendUser,
+  updateUserRow,
+  deleteUserRow,
 };
