@@ -2,6 +2,7 @@ const crypto = require('crypto');
 
 const SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24h
 const SESSION_SECRET = process.env.SESSION_SECRET || 'dev-secret-change-in-production';
+const IS_PRODUCTION = !!process.env.VERCEL;
 
 function sign(value) {
   return crypto.createHmac('sha256', SESSION_SECRET).update(value).digest('base64url');
@@ -18,10 +19,20 @@ function createSessionCookie(email, role) {
   return value + '.' + sig;
 }
 
-function getSession(req) {
+function getCookieValue(req) {
+  if (req.cookies && typeof req.cookies.session === 'string') return req.cookies.session;
   const cookie = req.headers?.cookie || req.headers?.Cookie || '';
   const match = cookie.match(/\bsession=([^;\s]+)/);
-  const raw = match ? match[1].trim() : null;
+  return match ? match[1].trim() : null;
+}
+
+function decodeBase64url(str) {
+  const base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+  return Buffer.from(base64, 'base64').toString('utf8');
+}
+
+function getSession(req) {
+  const raw = getCookieValue(req);
   if (!raw) return null;
   const dot = raw.lastIndexOf('.');
   if (dot === -1) return null;
@@ -29,7 +40,7 @@ function getSession(req) {
   const sig = raw.slice(dot + 1);
   if (sign(value) !== sig) return null;
   try {
-    const payload = JSON.parse(Buffer.from(value, 'base64url').toString('utf8'));
+    const payload = JSON.parse(decodeBase64url(value));
     if (payload.exp && payload.exp < Date.now()) return null;
     return { email: payload.email, role: payload.role };
   } catch (_) {
@@ -38,16 +49,14 @@ function getSession(req) {
 }
 
 function clearSessionCookie(res) {
-  res.setHeader('Set-Cookie', [
-    'session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0',
-  ]);
+  const opts = 'Path=/; HttpOnly; SameSite=Lax; Max-Age=0';
+  res.setHeader('Set-Cookie', ['session=; ' + opts + (IS_PRODUCTION ? '; Secure' : '')]);
 }
 
 function setSessionCookie(res, email, role) {
   const cookie = createSessionCookie(email, role);
-  res.setHeader('Set-Cookie', [
-    'session=' + cookie + '; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400',
-  ]);
+  const opts = 'Path=/; HttpOnly; SameSite=Lax; Max-Age=86400' + (IS_PRODUCTION ? '; Secure' : '');
+  res.setHeader('Set-Cookie', ['session=' + cookie + '; ' + opts]);
 }
 
 module.exports = {

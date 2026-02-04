@@ -17,9 +17,14 @@
     <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
       <div class="flex h-14 items-center justify-between sm:h-16">
         <a href="/" class="text-lg font-semibold text-slate-900 sm:text-xl">Scout Mailer</a>
-        <nav class="flex items-center gap-4 sm:gap-6">
+        <nav class="flex flex-wrap items-center gap-3 sm:gap-6">
           <a href="/" class="text-sm text-slate-600 hover:text-brand sm:text-base">Home</a>
           <a href="users.html" class="text-sm font-medium text-brand sm:text-base">Users</a>
+          <button type="button" id="auth-trigger" class="hidden text-sm font-medium text-brand hover:text-brand-light sm:text-base">Login</button>
+          <div id="auth-logged-in" class="hidden flex items-center gap-2 rounded-lg bg-brand/10 px-3 py-1.5 sm:gap-3 sm:px-4 sm:py-2">
+            <span id="auth-user" class="text-sm font-medium text-slate-700 sm:text-base"></span>
+            <button type="button" id="auth-logout" class="rounded-md bg-slate-200 px-2 py-1 text-sm font-medium text-slate-700 hover:bg-slate-300 sm:px-3 sm:py-1.5 sm:text-base">Log out</button>
+          </div>
         </nav>
       </div>
     </div>
@@ -47,7 +52,19 @@
       } catch (_) {}
       if (!user || user.role !== 'Admin') {
         window.location.href = '/';
+        return;
       }
+      var authUser = document.getElementById('auth-user');
+      var authBlock = document.getElementById('auth-logged-in');
+      var trigger = document.getElementById('auth-trigger');
+      var logoutBtn = document.getElementById('auth-logout');
+      if (authUser) authUser.textContent = (user.firstName || user.email) + ' (' + (user.role || 'Author') + ')';
+      if (authBlock) authBlock.classList.remove('hidden');
+      if (logoutBtn) logoutBtn.addEventListener('click', function () {
+        fetch('/api/logout', { method: 'POST', credentials: 'include' }).catch(function () {});
+        try { sessionStorage.removeItem('scout-mailer-user'); } catch (_) {}
+        window.location.href = '/';
+      });
     })();
   </script>
 </body>

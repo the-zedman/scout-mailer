@@ -28,9 +28,9 @@
     return true;
   }
 
-  function showError(msg) {
+  function showError(msg, asHtml) {
     if (errorEl) {
-      errorEl.textContent = msg || '';
+      if (asHtml) errorEl.innerHTML = msg || ''; else errorEl.textContent = msg || '';
       errorEl.classList.toggle('hidden', !msg);
     }
   }
@@ -54,6 +54,8 @@
           users = result.data.users;
           renderTable();
           if (tableWrap) tableWrap.classList.remove('hidden');
+        } else if (result.data.error === 'Admin only' || result.status === 403) {
+          showError('Session expired or you don\'t have permission. Please <a href="/" class="font-medium underline">log in again from the home page</a>.', true);
         } else {
           showError(result.data.error || 'Failed to load users.');
         }
