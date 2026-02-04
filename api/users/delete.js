@@ -1,11 +1,11 @@
-const { getSession } = require('../../_lib/tokens.js');
+const { getSession } = require('../_lib/tokens.js');
 const {
   getUsersCsv,
   setUsersCsv,
   parseCsv,
   findUserByEmail,
   deleteUserRow,
-} = require('../../_lib/users-csv.js');
+} = require('../_lib/users-csv.js');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {

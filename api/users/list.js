@@ -1,5 +1,5 @@
-const { getSession } = require('../../_lib/tokens.js');
-const { getUsersCsv, parseCsv } = require('../../_lib/users-csv.js');
+const { getSession } = require('../_lib/tokens.js');
+const { getUsersCsv, parseCsv } = require('../_lib/users-csv.js');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET') {

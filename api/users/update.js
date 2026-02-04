@@ -1,11 +1,11 @@
-const { getSession } = require('../../_lib/tokens.js');
+const { getSession } = require('../_lib/tokens.js');
 const {
   getUsersCsv,
   setUsersCsv,
   parseCsv,
   findUserByEmail,
   updateUserRow,
-} = require('../../_lib/users-csv.js');
+} = require('../_lib/users-csv.js');
 
 const ROLES = ['Admin', 'Manager', 'Author'];
 
