@@ -41,7 +41,7 @@ After that, every `git push` to `main` triggers a new deployment.
 
 - **Login** (header) opens a modal: sign in with email + password, or use **Create new account** (first name, last name, email, password). New users get role **Author**; roles are **Admin**, **Manager**, **Author**.
 - Users are stored in a CSV in [Vercel Blob](https://vercel.com/docs/storage/vercel-blob); passwords are hashed with bcrypt. Add a Blob store to the project so the API can read/write the CSV.
-- **Initial admin:** James Robinson, `james.robinson@nsw.scouts.com.au`, password `Swat99Ch`, role **Admin** (see `data/users.seed.csv`). On first use the API bootstraps from this seed into Blob.
+- **Initial admin:** An admin user is defined in `data/users.seed.csv`. Do not commit real credentials; use the seed only as a template or change the password after first login. The API bootstraps from this file into Blob on first use.
 - **Session:** Login uses a signed cookie (no Blob for sessions). Set `SESSION_SECRET` in Vercel env for production; otherwise a default is used.
 
 ## Test that it works
