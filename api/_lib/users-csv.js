@@ -1,10 +1,8 @@
 const fs = require('fs');
 const path = require('path');
-const { list, put } = require('@vercel/blob');
 
-const POINTER_PATH = 'users-current.txt';
+const GITHUB_API = 'https://api.github.com/repos/the-zedman/scout-mailer/contents/data/users.csv';
 const SEED_PATH = path.join(process.cwd(), 'data', 'users.seed.csv');
-
 const CSV_HEADER = 'FirstName,LastName,Email,PasswordHash,Role';
 
 function parseCsv(csv) {
@@ -16,74 +14,71 @@ function serializeCsv(rows) {
   return rows.map((row) => row.join(',')).join('\n') + '\n';
 }
 
-/**
- * Read current CSV: pointer file tells us which blob has the CSV. Fetch that blob. No overwriting.
- */
 async function getUsersCsv() {
-  try {
-    const { blobs: pointerBlobs } = await list({ prefix: POINTER_PATH });
-    const pointerBlob = (pointerBlobs || []).find((b) => b.pathname === POINTER_PATH);
-    if (pointerBlob?.url) {
-      const res = await fetch(pointerBlob.url, { cache: 'no-store' });
-      if (res.ok) {
-        const pathname = (await res.text()).trim();
-        if (pathname) {
-          const { blobs } = await list({ prefix: pathname });
-          const csvBlob = (blobs || []).find((b) => b.pathname === pathname);
-          if (csvBlob?.url) {
-            const csvRes = await fetch(csvBlob.url, { cache: 'no-store' });
-            if (csvRes.ok) return await csvRes.text();
-          }
-        }
-      }
-    }
-  } catch (_) {}
-  if (fs.existsSync(SEED_PATH)) {
-    const seed = fs.readFileSync(SEED_PATH, 'utf8');
-    try { await bootstrapSeedToBlob(); } catch (_) {}
-    return seed;
+  const token = process.env.GITHUB_TOKEN;
+  if (token) {
+    try {
+      const res = await fetch(GITHUB_API, {
+        headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github.raw' },
+      });
+      if (res.ok) return await res.text();
+    } catch (_) {}
   }
+  if (fs.existsSync(SEED_PATH)) return fs.readFileSync(SEED_PATH, 'utf8');
   return CSV_HEADER + '\n';
 }
 
-/**
- * Write CSV: new blob each time (new URL = no cache), then update pointer so next read gets it.
- */
 async function setUsersCsv(csv) {
-  const pathname = 'users-' + Date.now() + '.csv';
-  await put(pathname, csv, { contentType: 'text/csv', access: 'public' });
-  await put(POINTER_PATH, pathname, { contentType: 'text/plain', access: 'public' });
-}
+  const token = process.env.GITHUB_TOKEN;
+  if (!token) throw new Error('GITHUB_TOKEN not set');
 
-/**
- * Bootstrap: first time we have no pointer. Write seed to a blob and set pointer. Called once from getUsersCsv when no pointer.
- */
-async function bootstrapSeedToBlob() {
-  if (!fs.existsSync(SEED_PATH)) return;
-  const seed = fs.readFileSync(SEED_PATH, 'utf8');
-  const pathname = 'users-' + Date.now() + '.csv';
-  await put(pathname, seed, { contentType: 'text/csv', access: 'public' });
-  await put(POINTER_PATH, pathname, { contentType: 'text/plain', access: 'public' });
+  let sha = null;
+  const getRes = await fetch(GITHUB_API, {
+    headers: { Authorization: 'Bearer ' + token },
+  });
+  if (getRes.ok) {
+    const data = await getRes.json();
+    sha = data.sha;
+  }
+
+  const body = {
+    message: 'Update users.csv',
+    content: Buffer.from(csv, 'utf8').toString('base64'),
+  };
+  if (sha) body.sha = sha;
+
+  const putRes = await fetch(GITHUB_API, {
+    method: 'PUT',
+    headers: {
+      Authorization: 'Bearer ' + token,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+  if (!putRes.ok) {
+    const err = await putRes.text();
+    throw new Error('GitHub API: ' + putRes.status + ' ' + err);
+  }
 }
 
 function findUserByEmail(rows, email) {
-  const normalized = String(email || '').trim().toLowerCase();
+  const n = String(email || '').trim().toLowerCase();
   for (let i = 1; i < rows.length; i++) {
-    if (rows[i][2] && rows[i][2].toLowerCase() === normalized) return { row: rows[i], index: i };
+    if (rows[i][2] && rows[i][2].toLowerCase() === n) return { row: rows[i], index: i };
   }
   return null;
 }
 
-function appendUser(rows, firstName, lastName, email, passwordHash, role = 'Author') {
-  const newRow = [firstName, lastName, String(email).trim(), passwordHash, role];
+function appendUser(rows, firstName, lastName, email, passwordHash, role) {
+  const newRow = [firstName, lastName, String(email).trim(), passwordHash, role || 'Author'];
   return serializeCsv([...rows, newRow]);
 }
 
 function updateUserRow(rows, targetEmail, updates) {
-  const normalized = String(targetEmail).trim().toLowerCase();
+  const n = String(targetEmail).trim().toLowerCase();
   const out = rows.map((row, i) => {
     if (i === 0) return row;
-    if (!Array.isArray(row) || !row[2] || row[2].toLowerCase() !== normalized) return row;
+    if (!Array.isArray(row) || !row[2] || row[2].toLowerCase() !== n) return row;
     return [
       updates.firstName !== undefined ? String(updates.firstName).trim() : (row[0] || ''),
       updates.lastName !== undefined ? String(updates.lastName).trim() : (row[1] || ''),
@@ -96,8 +91,8 @@ function updateUserRow(rows, targetEmail, updates) {
 }
 
 function deleteUserRow(rows, targetEmail) {
-  const normalized = String(targetEmail).trim().toLowerCase();
-  const out = rows.filter((row, i) => i === 0 || !row[2] || row[2].toLowerCase() !== normalized);
+  const n = String(targetEmail).trim().toLowerCase();
+  const out = rows.filter((row, i) => i === 0 || !row[2] || row[2].toLowerCase() !== n);
   return serializeCsv(out);
 }
 
@@ -107,7 +102,6 @@ module.exports = {
   serializeCsv,
   getUsersCsv,
   setUsersCsv,
-  bootstrapSeedToBlob,
   findUserByEmail,
   appendUser,
   updateUserRow,

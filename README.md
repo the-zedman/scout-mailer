@@ -5,11 +5,11 @@ Plain HTML, CSS, and JavaScript site. Mobile-first, then desktop. Styled with Ta
 ## Local setup
 
 - **Static only:** `npx serve .` then open the URL (login/register will 404; no API).
-- **With API + auth:** Use Vercel for the API and Blob storage:
+- **With API + auth:** Use Vercel for the API:
   ```bash
   npm install && vercel dev
   ```
-  Then open the URL Vercel gives you. Add a [Blob store](https://vercel.com/docs/storage/vercel-blob) to the project and run `vercel env pull` so `BLOB_READ_WRITE_TOKEN` is set locally.
+  Then open the URL Vercel gives you. Set `GITHUB_TOKEN` (see below) so the users CSV can be read/written.
 
 ## GitHub + deploy
 
@@ -40,9 +40,9 @@ After that, every `git push` to `main` triggers a new deployment.
 ### Auth and users
 
 - **Login** (header) opens a modal: sign in with email + password, or use **Create new account** (first name, last name, email, password). New users get role **Author**; roles are **Admin**, **Manager**, **Author**.
-- Users are stored in a CSV in [Vercel Blob](https://vercel.com/docs/storage/vercel-blob); passwords are hashed with bcrypt. Add a Blob store to the project so the API can read/write the CSV.
-- **Initial admin:** An admin user is defined in `data/users.seed.csv`. Do not commit real credentials; use the seed only as a template or change the password after first login. The API bootstraps from this file into Blob on first use.
-- **Session:** Login uses a signed cookie (no Blob for sessions). Set `SESSION_SECRET` in Vercel env for production; otherwise a default is used.
+- **Users CSV:** The CSV lives in the repo at `data/users.csv`. The API reads and writes it via the GitHub API (no Blob). For edits to persist, set **GITHUB_TOKEN** in Vercel: create a [Personal Access Token](https://github.com/settings/tokens) with `repo` scope and add it as an env var in the Vercel project. If unset, the API reads from `data/users.seed.csv` only and cannot save edits.
+- **Initial admin:** An admin user is defined in `data/users.seed.csv`. The API uses that file when `data/users.csv` does not exist yet; the first save (edit or new user) creates `data/users.csv` in the repo.
+- **Session:** Login uses a signed cookie. Set `SESSION_SECRET` in Vercel env for production; otherwise a default is used.
 
 ## Test that it works
 
