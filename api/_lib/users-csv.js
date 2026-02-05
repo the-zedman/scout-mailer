@@ -1,7 +1,8 @@
 const fs = require('fs');
 const path = require('path');
+const { Redis } = require('@upstash/redis');
 
-const GITHUB_API = 'https://api.github.com/repos/the-zedman/scout-mailer/contents/data/users.csv';
+const KEY = 'users-csv';
 const SEED_PATH = path.join(process.cwd(), 'data', 'users.seed.csv');
 const CSV_HEADER = 'FirstName,LastName,Email,PasswordHash,Role';
 
@@ -14,14 +15,24 @@ function serializeCsv(rows) {
   return rows.map((row) => row.join(',')).join('\n') + '\n';
 }
 
+function getRedis() {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return null;
+  return new Redis({ url, token });
+}
+
 async function getUsersCsv() {
-  const token = process.env.GITHUB_TOKEN;
-  if (token) {
+  const redis = getRedis();
+  if (redis) {
     try {
-      const res = await fetch(GITHUB_API, {
-        headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github.raw' },
-      });
-      if (res.ok) return await res.text();
+      const csv = await redis.get(KEY);
+      if (csv && typeof csv === 'string') return csv;
+      if (fs.existsSync(SEED_PATH)) {
+        const seed = fs.readFileSync(SEED_PATH, 'utf8');
+        await redis.set(KEY, seed);
+        return seed;
+      }
     } catch (_) {}
   }
   if (fs.existsSync(SEED_PATH)) return fs.readFileSync(SEED_PATH, 'utf8');
@@ -29,36 +40,9 @@ async function getUsersCsv() {
 }
 
 async function setUsersCsv(csv) {
-  const token = process.env.GITHUB_TOKEN;
-  if (!token) throw new Error('GITHUB_TOKEN not set');
-
-  let sha = null;
-  const getRes = await fetch(GITHUB_API, {
-    headers: { Authorization: 'Bearer ' + token },
-  });
-  if (getRes.ok) {
-    const data = await getRes.json();
-    sha = data.sha;
-  }
-
-  const body = {
-    message: 'Update users.csv',
-    content: Buffer.from(csv, 'utf8').toString('base64'),
-  };
-  if (sha) body.sha = sha;
-
-  const putRes = await fetch(GITHUB_API, {
-    method: 'PUT',
-    headers: {
-      Authorization: 'Bearer ' + token,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
-  if (!putRes.ok) {
-    const err = await putRes.text();
-    throw new Error('GitHub API: ' + putRes.status + ' ' + err);
-  }
+  const redis = getRedis();
+  if (!redis) throw new Error('Upstash Redis not configured. Add the Upstash Redis integration in Vercel.');
+  await redis.set(KEY, csv);
 }
 
 function findUserByEmail(rows, email) {

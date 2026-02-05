@@ -9,7 +9,7 @@ Plain HTML, CSS, and JavaScript site. Mobile-first, then desktop. Styled with Ta
   ```bash
   npm install && vercel dev
   ```
-  Then open the URL Vercel gives you. Set `GITHUB_TOKEN` (see below) so the users CSV can be read/written.
+  Then open the URL Vercel gives you. Add the **Upstash Redis** integration (see below) so user data is stored securely.
 
 ## GitHub + deploy
 
@@ -40,8 +40,8 @@ After that, every `git push` to `main` triggers a new deployment.
 ### Auth and users
 
 - **Login** (header) opens a modal: sign in with email + password, or use **Create new account** (first name, last name, email, password). New users get role **Author**; roles are **Admin**, **Manager**, **Author**.
-- **Users CSV:** The CSV lives in the repo at `data/users.csv`. The API reads and writes it via the GitHub API (no Blob). For edits to persist, set **GITHUB_TOKEN** in Vercel: create a [Personal Access Token](https://github.com/settings/tokens) with `repo` scope and add it as an env var in the Vercel project. If unset, the API reads from `data/users.seed.csv` only and cannot save edits.
-- **Initial admin:** An admin user is defined in `data/users.seed.csv`. The API uses that file when `data/users.csv` does not exist yet; the first save (edit or new user) creates `data/users.csv` in the repo.
+- **User data:** Stored as a CSV string in **Upstash Redis** (one key, server-only). No public URLs, no data in the repo. Add the [Upstash Redis](https://vercel.com/integrations/upstash) integration to your Vercel project; Vercel sets `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` automatically. If Redis is not configured, the API falls back to `data/users.seed.csv` for reads only (edits cannot be saved).
+- **Initial admin:** Defined in `data/users.seed.csv`. On first use with Redis, that seed is copied into Redis; after that all reads/writes use Redis.
 - **Session:** Login uses a signed cookie. Set `SESSION_SECRET` in Vercel env for production; otherwise a default is used.
 
 ## Test that it works

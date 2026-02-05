@@ -3,6 +3,7 @@
   "private": true,
   "description": "Scout Mailer – plain HTML/CSS/JS, mobile-first",
   "dependencies": {
+    "@upstash/redis": "^1.36.2",
     "bcryptjs": "^2.4.3"
   }
 }
