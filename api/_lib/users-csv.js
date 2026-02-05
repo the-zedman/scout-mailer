@@ -24,32 +24,19 @@ function serializeCsv(rows) {
 }
 
 /**
- * Get full CSV content: from Blob if present, else from seed file and optionally bootstrap Blob.
- * Only use seed when no blob exists so we never overwrite Blob (and lose edits) with seed.
+ * Get full CSV content: from Blob if present, else from seed file.
+ * We never write the seed to Blob here – only setUsersCsv() writes. That way we never overwrite edits.
  */
 async function getUsersCsv() {
-  let hadBlob = false;
   try {
     const { blobs } = await list({ prefix: BLOB_PATH });
-    const matching = (blobs || []).filter((b) => b.pathname === BLOB_PATH);
-    const usersBlob = matching.length === 0
-      ? null
-      : matching.sort((a, b) => new Date(b.uploadedAt || 0) - new Date(a.uploadedAt || 0))[0];
+    const usersBlob = (blobs || []).find((b) => b.pathname === BLOB_PATH);
     if (usersBlob?.url) {
-      hadBlob = true;
-      const url = usersBlob.url + (usersBlob.url.includes('?') ? '&' : '?') + 't=' + Date.now();
-      const res = await fetch(url, { cache: 'no-store', headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' } });
+      const res = await fetch(usersBlob.url, { cache: 'no-store' });
       if (res.ok) return await res.text();
     }
   } catch (_) {}
-  if (hadBlob) throw new Error('Failed to read users from Blob');
-  if (fs.existsSync(SEED_PATH)) {
-    const seed = fs.readFileSync(SEED_PATH, 'utf8');
-    try {
-      await put(BLOB_PATH, seed, { contentType: 'text/csv', access: 'public' });
-    } catch (_) {}
-    return seed;
-  }
+  if (fs.existsSync(SEED_PATH)) return fs.readFileSync(SEED_PATH, 'utf8');
   return CSV_HEADER + '\n';
 }
 
