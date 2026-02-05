@@ -148,7 +148,13 @@
         .then(function (result) {
           if (result.ok && result.data.success) {
             closeEditModal();
-            loadUsers();
+            if (result.data.users && Array.isArray(result.data.users)) {
+              users = result.data.users;
+              renderTable();
+              if (tableWrap) tableWrap.classList.remove('hidden');
+            } else {
+              loadUsers();
+            }
             return;
           }
           editError.textContent = (result.data && result.data.error) || 'Update failed';

@@ -31,10 +31,14 @@ async function getUsersCsv() {
   let hadBlob = false;
   try {
     const { blobs } = await list({ prefix: BLOB_PATH });
-    const usersBlob = blobs.find((b) => b.pathname === BLOB_PATH);
+    const matching = (blobs || []).filter((b) => b.pathname === BLOB_PATH);
+    const usersBlob = matching.length === 0
+      ? null
+      : matching.sort((a, b) => new Date(b.uploadedAt || 0) - new Date(a.uploadedAt || 0))[0];
     if (usersBlob?.url) {
       hadBlob = true;
-      const res = await fetch(usersBlob.url, { cache: 'no-store' });
+      const url = usersBlob.url + (usersBlob.url.includes('?') ? '&' : '?') + 't=' + Date.now();
+      const res = await fetch(url, { cache: 'no-store', headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' } });
       if (res.ok) return await res.text();
     }
   } catch (_) {}

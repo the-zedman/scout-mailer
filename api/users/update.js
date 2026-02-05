@@ -46,7 +46,13 @@ module.exports = async function handler(req, res) {
 
     const newCsv = updateUserRow(rows, targetEmail, updates);
     await setUsersCsv(newCsv);
-    return res.status(200).json({ success: true });
+    const newRows = parseCsv(newCsv);
+    const users = [];
+    for (let i = 1; i < newRows.length; i++) {
+      const [firstName, lastName, email, , role] = newRows[i];
+      users.push({ firstName, lastName, email, role: role || 'Author' });
+    }
+    return res.status(200).json({ success: true, users });
   } catch (e) {
     console.error('User update error:', e);
     return res.status(500).json({ error: 'Server error' });
