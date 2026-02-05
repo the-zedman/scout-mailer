@@ -25,19 +25,20 @@ function serializeCsv(rows) {
 
 /**
  * Get full CSV content: from Blob if present, else from seed file and optionally bootstrap Blob.
+ * Only use seed when no blob exists so we never overwrite Blob (and lose edits) with seed.
  */
 async function getUsersCsv() {
+  let hadBlob = false;
   try {
     const { blobs } = await list({ prefix: BLOB_PATH });
     const usersBlob = blobs.find((b) => b.pathname === BLOB_PATH);
     if (usersBlob?.url) {
-      const res = await fetch(usersBlob.url);
+      hadBlob = true;
+      const res = await fetch(usersBlob.url, { cache: 'no-store' });
       if (res.ok) return await res.text();
     }
-  } catch (_) {
-    // Blob not configured or error – use seed
-  }
-  // Fallback: read seed file from repo
+  } catch (_) {}
+  if (hadBlob) throw new Error('Failed to read users from Blob');
   if (fs.existsSync(SEED_PATH)) {
     const seed = fs.readFileSync(SEED_PATH, 'utf8');
     try {
