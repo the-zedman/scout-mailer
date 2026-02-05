@@ -2,98 +2,102 @@ const fs = require('fs');
 const path = require('path');
 const { list, put } = require('@vercel/blob');
 
-const BLOB_PATH = 'users.csv';
+const POINTER_PATH = 'users-current.txt';
 const SEED_PATH = path.join(process.cwd(), 'data', 'users.seed.csv');
 
 const CSV_HEADER = 'FirstName,LastName,Email,PasswordHash,Role';
 
-/**
- * Parse CSV string into rows (array of arrays). First row is header.
- * Does not handle quoted commas; safe for our fields (no commas in input).
- */
 function parseCsv(csv) {
-  const lines = csv.trim().split(/\r?\n/).filter(Boolean);
+  const lines = String(csv || '').trim().split(/\r?\n/).filter(Boolean);
   return lines.map((line) => line.split(','));
 }
 
-/**
- * Serialize rows back to CSV string.
- */
 function serializeCsv(rows) {
   return rows.map((row) => row.join(',')).join('\n') + '\n';
 }
 
 /**
- * Get full CSV content: from Blob if present, else from seed file.
- * We never write the seed to Blob here – only setUsersCsv() writes. That way we never overwrite edits.
+ * Read current CSV: pointer file tells us which blob has the CSV. Fetch that blob. No overwriting.
  */
 async function getUsersCsv() {
   try {
-    const { blobs } = await list({ prefix: BLOB_PATH });
-    const usersBlob = (blobs || []).find((b) => b.pathname === BLOB_PATH);
-    if (usersBlob?.url) {
-      const res = await fetch(usersBlob.url, { cache: 'no-store' });
-      if (res.ok) return await res.text();
+    const { blobs: pointerBlobs } = await list({ prefix: POINTER_PATH });
+    const pointerBlob = (pointerBlobs || []).find((b) => b.pathname === POINTER_PATH);
+    if (pointerBlob?.url) {
+      const res = await fetch(pointerBlob.url, { cache: 'no-store' });
+      if (res.ok) {
+        const pathname = (await res.text()).trim();
+        if (pathname) {
+          const { blobs } = await list({ prefix: pathname });
+          const csvBlob = (blobs || []).find((b) => b.pathname === pathname);
+          if (csvBlob?.url) {
+            const csvRes = await fetch(csvBlob.url, { cache: 'no-store' });
+            if (csvRes.ok) return await csvRes.text();
+          }
+        }
+      }
     }
   } catch (_) {}
-  if (fs.existsSync(SEED_PATH)) return fs.readFileSync(SEED_PATH, 'utf8');
+  if (fs.existsSync(SEED_PATH)) {
+    const seed = fs.readFileSync(SEED_PATH, 'utf8');
+    try { await bootstrapSeedToBlob(); } catch (_) {}
+    return seed;
+  }
   return CSV_HEADER + '\n';
 }
 
 /**
- * Write full CSV content to Blob.
+ * Write CSV: new blob each time (new URL = no cache), then update pointer so next read gets it.
  */
 async function setUsersCsv(csv) {
-  await put(BLOB_PATH, csv, { contentType: 'text/csv', access: 'public' });
+  const pathname = 'users-' + Date.now() + '.csv';
+  await put(pathname, csv, { contentType: 'text/csv', access: 'public' });
+  await put(POINTER_PATH, pathname, { contentType: 'text/plain', access: 'public' });
 }
 
 /**
- * Find user row by email. Rows are [FirstName, LastName, Email, PasswordHash, Role].
+ * Bootstrap: first time we have no pointer. Write seed to a blob and set pointer. Called once from getUsersCsv when no pointer.
  */
+async function bootstrapSeedToBlob() {
+  if (!fs.existsSync(SEED_PATH)) return;
+  const seed = fs.readFileSync(SEED_PATH, 'utf8');
+  const pathname = 'users-' + Date.now() + '.csv';
+  await put(pathname, seed, { contentType: 'text/csv', access: 'public' });
+  await put(POINTER_PATH, pathname, { contentType: 'text/plain', access: 'public' });
+}
+
 function findUserByEmail(rows, email) {
-  const normalized = email.trim().toLowerCase();
+  const normalized = String(email || '').trim().toLowerCase();
   for (let i = 1; i < rows.length; i++) {
-    if (rows[i][2]?.toLowerCase() === normalized) return { row: rows[i], index: i };
+    if (rows[i][2] && rows[i][2].toLowerCase() === normalized) return { row: rows[i], index: i };
   }
   return null;
 }
 
-/**
- * Append a new user row and return updated CSV string.
- */
 function appendUser(rows, firstName, lastName, email, passwordHash, role = 'Author') {
-  const newRow = [firstName, lastName, email.trim(), passwordHash, role];
-  const newRows = [...rows, newRow];
-  return serializeCsv(newRows);
+  const newRow = [firstName, lastName, String(email).trim(), passwordHash, role];
+  return serializeCsv([...rows, newRow]);
 }
 
-/**
- * Update a user row by target email. Updates firstName, lastName, email, role; keeps password hash.
- */
 function updateUserRow(rows, targetEmail, updates) {
   const normalized = String(targetEmail).trim().toLowerCase();
   const out = rows.map((row, i) => {
     if (i === 0) return row;
-    if (!Array.isArray(row) || (row[2] && row[2].toLowerCase()) !== normalized) return row;
-    const hash = row[3] != null ? String(row[3]) : '';
-    const currentRole = row[4] != null ? String(row[4]) : 'Author';
+    if (!Array.isArray(row) || !row[2] || row[2].toLowerCase() !== normalized) return row;
     return [
-      updates.firstName !== undefined ? String(updates.firstName).trim() : (row[0] != null ? String(row[0]) : ''),
-      updates.lastName !== undefined ? String(updates.lastName).trim() : (row[1] != null ? String(row[1]) : ''),
-      updates.email !== undefined ? String(updates.email).trim() : (row[2] != null ? String(row[2]) : ''),
-      hash,
-      updates.role !== undefined ? updates.role : currentRole,
+      updates.firstName !== undefined ? String(updates.firstName).trim() : (row[0] || ''),
+      updates.lastName !== undefined ? String(updates.lastName).trim() : (row[1] || ''),
+      updates.email !== undefined ? String(updates.email).trim() : (row[2] || ''),
+      row[3] != null ? String(row[3]) : '',
+      updates.role !== undefined ? updates.role : (row[4] || 'Author'),
     ];
   });
   return serializeCsv(out);
 }
 
-/**
- * Remove a user row by email. Returns new CSV string.
- */
 function deleteUserRow(rows, targetEmail) {
-  const normalized = targetEmail.trim().toLowerCase();
-  const out = rows.filter((row, i) => i === 0 || row[2]?.toLowerCase() !== normalized);
+  const normalized = String(targetEmail).trim().toLowerCase();
+  const out = rows.filter((row, i) => i === 0 || !row[2] || row[2].toLowerCase() !== normalized);
   return serializeCsv(out);
 }
 
@@ -103,6 +107,7 @@ module.exports = {
   serializeCsv,
   getUsersCsv,
   setUsersCsv,
+  bootstrapSeedToBlob,
   findUserByEmail,
   appendUser,
   updateUserRow,
