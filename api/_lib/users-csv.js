@@ -79,16 +79,18 @@ function appendUser(rows, firstName, lastName, email, passwordHash, role = 'Auth
  * Update a user row by target email. Updates firstName, lastName, email, role; keeps password hash.
  */
 function updateUserRow(rows, targetEmail, updates) {
-  const normalized = targetEmail.trim().toLowerCase();
+  const normalized = String(targetEmail).trim().toLowerCase();
   const out = rows.map((row, i) => {
     if (i === 0) return row;
-    if (row[2]?.toLowerCase() !== normalized) return row;
+    if (!Array.isArray(row) || (row[2] && row[2].toLowerCase()) !== normalized) return row;
+    const hash = row[3] != null ? String(row[3]) : '';
+    const currentRole = row[4] != null ? String(row[4]) : 'Author';
     return [
-      updates.firstName !== undefined ? updates.firstName : row[0],
-      updates.lastName !== undefined ? updates.lastName : row[1],
-      updates.email !== undefined ? updates.email.trim() : row[2],
-      row[3],
-      updates.role !== undefined ? updates.role : row[4],
+      updates.firstName !== undefined ? String(updates.firstName).trim() : (row[0] != null ? String(row[0]) : ''),
+      updates.lastName !== undefined ? String(updates.lastName).trim() : (row[1] != null ? String(row[1]) : ''),
+      updates.email !== undefined ? String(updates.email).trim() : (row[2] != null ? String(row[2]) : ''),
+      hash,
+      updates.role !== undefined ? updates.role : currentRole,
     ];
   });
   return serializeCsv(out);

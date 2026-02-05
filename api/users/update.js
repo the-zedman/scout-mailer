@@ -1,4 +1,5 @@
 const { getSession } = require('../_lib/tokens.js');
+const { getJsonBody } = require('../_lib/body.js');
 const {
   getUsersCsv,
   setUsersCsv,
@@ -16,14 +17,17 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const session = await getSession(req);
+    const session = getSession(req);
     if (!session || session.role !== 'Admin') {
       return res.status(403).json({ error: 'Admin only' });
     }
 
-    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    const { targetEmail, firstName, lastName, email, role } = body || {};
-    if (!targetEmail?.trim()) {
+    const body = getJsonBody(req);
+    if (!body || typeof body !== 'object') {
+      return res.status(400).json({ error: 'Invalid or missing JSON body' });
+    }
+    const { targetEmail, firstName, lastName, email, role } = body;
+    if (!targetEmail || !String(targetEmail).trim()) {
       return res.status(400).json({ error: 'targetEmail is required' });
     }
 
