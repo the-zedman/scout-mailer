@@ -41,7 +41,7 @@ async function getUsersCsv() {
   if (fs.existsSync(SEED_PATH)) {
     const seed = fs.readFileSync(SEED_PATH, 'utf8');
     try {
-      await put(BLOB_PATH, seed, { contentType: 'text/csv' });
+      await put(BLOB_PATH, seed, { contentType: 'text/csv', access: 'public' });
     } catch (_) {}
     return seed;
   }
@@ -52,7 +52,7 @@ async function getUsersCsv() {
  * Write full CSV content to Blob.
  */
 async function setUsersCsv(csv) {
-  await put(BLOB_PATH, csv, { contentType: 'text/csv' });
+  await put(BLOB_PATH, csv, { contentType: 'text/csv', access: 'public' });
 }
 
 /**
